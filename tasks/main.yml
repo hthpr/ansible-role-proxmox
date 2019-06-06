@@ -143,8 +143,15 @@
     email: "{{ item.email | default(omit) }}"
     firstname: "{{ item.firstname | default(omit) }}"
     lastname: "{{ item.lastname | default(omit) }}"
+    password: "{{ item.password | default(omit) }}"
+    expire: "{{ item.expire | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    enable: "{{ item.enable | default(omit) }}"
+    comment: "{{ item.comment | default(omit) }}"
     groups: "{{ item.groups | default([]) }}"
-  with_items: "{{ pve_users }}"
+  loop: "{{ pve_users }}"
+  loop_control:
+    label: "{{ item.name }}"
   when: "not pve_cluster_enabled or (pve_cluster_enabled and inventory_hostname == groups[pve_group][0])"
 
 - name: Configure Proxmox ACLs
