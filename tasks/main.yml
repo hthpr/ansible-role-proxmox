@@ -3,10 +3,21 @@
 - name: Gather distribution specific variables
   include_vars: "debian-{{ ansible_distribution_release }}.yml"
 
+- set_fact:
+    pve_ipaddress: "{{ ansible_default_ipv6.address }}"
+  when:
+      - pve_default_ip|default(None) == 'ipv6'
+      - ansible_default_ipv6['address'] is defined
+
+- set_fact:
+    pve_ipaddress: "{{ ansible_default_ipv4.address }}"
+  when: (pve_default_ip|default('ipv4') == 'ipv4' and ansible_default_ipv4['address'] is defined) or
+        (pve_fallback_ipv4|default(true) == true and pve_ipaddress is undefined)
+
 - name: Ensure that we have an IP address for all cluster hosts
   assert:
     that:
-      - "hostvars[item].ansible_default_ipv4.address is defined"
+      - "hostvars[item].pve_ipaddress is defined"
     msg: "Missing IP address and other information for {{ item }}. Have you gathered its facts?"
   with_items: "{{ groups[pve_group] }}"
 
@@ -29,7 +40,7 @@
     marker: "# {mark} ANSIBLE MANAGED: Proxmox Cluster Hosts"
     content: |
       {% for host in groups[pve_group] %}
-      {{ hostvars[host].ansible_default_ipv4.address }} {{ hostvars[host].ansible_fqdn }} {{ hostvars[host].ansible_hostname }}{% if ansible_fqdn == hostvars[host].ansible_fqdn %} pvelocalhost{% endif %}
+      {{ hostvars[host].pve_ipaddress }} {{ hostvars[host].ansible_fqdn }} {{ hostvars[host].ansible_hostname }}{% if ansible_fqdn == hostvars[host].ansible_fqdn %} pvelocalhost{% endif %}
 
       {% endfor %}
 
@@ -42,7 +53,7 @@
     # above, then we match against different IPs (e.g. NOT 10.0.3.17) that have
     # the hostname/fqdn we inserted a record for previously, taking care also to
     # detect word boundaries (\b wasn't working for some reason)
-    regexp: '^(?!{{ hostvars[item].ansible_default_ipv4.address | regex_escape() }} {{ hostvars[item].ansible_fqdn | regex_escape() }} {{ hostvars[item].ansible_hostname | regex_escape() }}( pvelocalhost)?)(?!{{ hostvars[item].ansible_default_ipv4.address | regex_escape() }})[\w:.]+(\s+.*)?\s({{ hostvars[item].ansible_fqdn | regex_escape() }}|{{ hostvars[item].ansible_hostname | regex_escape() }}{% if ansible_fqdn == hostvars[item].ansible_fqdn %}|pvelocalhost{% endif %})(\s+.*|\s*)$'
+    regexp: '^(?!{{ hostvars[item].pve_ipaddress | regex_escape() }} {{ hostvars[item].ansible_fqdn | regex_escape() }} {{ hostvars[item].ansible_hostname | regex_escape() }}( pvelocalhost)?)(?!{{ hostvars[item].pve_ipaddress | regex_escape() }})[\w:.]+(\s+.*)?\s({{ hostvars[item].ansible_fqdn | regex_escape() }}|{{ hostvars[item].ansible_hostname | regex_escape() }}{% if ansible_fqdn == hostvars[item].ansible_fqdn %}|pvelocalhost{% endif %})(\s+.*|\s*)$'
     state: absent
     backup: yes
   with_items: "{{ groups[pve_group] }}"
