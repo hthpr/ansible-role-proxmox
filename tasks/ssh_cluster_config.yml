@@ -34,6 +34,7 @@
     content: |
       {% for host in groups[pve_group] %}
       Host {{ hostvars[host].pve_cluster_ssh_addrs | join(" ") }}
+          HostKeyAlgorithms ssh-rsa-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,ssh-rsa,ssh-ed25519,ecdsa-sha2-nistp521-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp521,ecdsa-sha2-nistp384,ecdsa-sha2-nistp256
           IdentityFile /root/.ssh/id_rsa
           Port {{ pve_ssh_port }}
       {% endfor %}
@@ -63,12 +64,12 @@
 
 - name: Check status of known hosts file
   stat:
-    path: /root/.ssh/known_hosts
+    path: /etc/ssh/ssh_known_hosts
   register: _pve_known_hosts_file
 
 - name: Add every host's host keys to global known_hosts
   blockinfile:
-    dest: /root/.ssh/known_hosts
+    dest: /etc/ssh/ssh_known_hosts
     create: yes
     marker: "# {mark}: PVE host keys (managed by ansible)."
     content: |
