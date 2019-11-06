@@ -38,13 +38,18 @@
       msg: 'Ceph intial monitor creation failed.'
     when: _ceph_initial_mon is failed
 
-  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  when:
+    - pve_ceph_mon_create
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
 
 - name: Create additional Ceph monitors
   command: 'pveceph mon create'
   args:
     creates: '/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/'
-  when: inventory_hostname != groups[pve_ceph_mon_group][0]
+  when: 
+    - pve_ceph_mon_create
+    - inventory_hostname != groups[pve_ceph_mon_group][0]
+    - inventory_hostname in groups[pve_ceph_mon_group]
 
 - name: Create Ceph OSDs
   command: >-
